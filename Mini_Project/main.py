@@ -12,7 +12,6 @@ CORS(app)
 app.config["MONGO_URI"] = os.getenv("DATABASE_URL")
 socketio = SocketIO(app, cors_allowed_origins="*") #SocketIO for real time updates 
 
-
 # MongoDB connection
 try:
     client = MongoClient(app.config["MONGO_URI"]) 
@@ -35,7 +34,7 @@ def register_user():
     return jsonify({"message": "User registered successfully!"}), 201
 
 # Verify RFID access and log the attempt.
-@app.route("/access", methods=["POST"])
+@app.route("/log", methods=["POST"])
 def access_check():
     data = request.json
     rfid_tag = data.get("rfid_tag")
