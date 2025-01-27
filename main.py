@@ -62,6 +62,24 @@ def access_check():
         return jsonify({"message": "Access granted"}), 200
     return jsonify({"message": "Access denied"}), 403
 
+#Search functionality API
+@app.route("/search", methods=["GET"])
+def search():
+    date_resp = request.args.get("date")
+    if not date_resp:
+        return jsonify({"error": "Date is required"}), 400
+
+    date = datetime.strptime(date_resp, "%Y-%m-%d")
+    logs = logs_collection.find({"date": date})
+    logs_list = list(logs)
+    
+    if logs_list:
+        return jsonify(logs_list), 200
+    else:
+        return jsonify({"Error message":"No events found for this day"}), 404
+    
+    
+
 # Handle a new client connection.
 @socketio.on("connect")
 def handle_connect():
