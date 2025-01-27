@@ -70,5 +70,5 @@ def handle_disconnect():
     print("Client disconnected!")
 
 if __name__ == "__main__":
-    # Use SocketIO's run method to start the server
-    socketio.run(app, debug=True)
+    # Remove socketio.run(app, debug=True)
+    app.run()
