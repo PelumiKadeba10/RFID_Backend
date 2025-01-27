@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch() 
+
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
@@ -71,4 +74,5 @@ def handle_disconnect():
 
 if __name__ == "__main__":
     # Remove socketio.run(app, debug=True)
-    app.run()
+    with app.app_context():
+        app.run()
