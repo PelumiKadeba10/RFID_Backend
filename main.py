@@ -31,7 +31,7 @@ except Exception as e:
 @app.route("/Register", methods=["POST"])
 def register_user():
     data = request.json
-    if not data or "user_id" not in data or "rfid_tag" not in data:
+    if not data or "uid" not in data or "uid" not in data:
         return jsonify({"Error": "Missing required fields"}), 400
 
     users_collection.insert_one(data)
@@ -41,16 +41,18 @@ def register_user():
 @app.route("/log", methods=["POST"])
 def access_check():
     data = request.json
-    rfid_tag = data.get("rfid_tag")
+    rfid_tag = data.get("uid")
 
     if not rfid_tag:
         return jsonify({"error": "Missing RFID tag"}), 400
 
     user = users_collection.find_one({"rfid_tag": rfid_tag})
     log_entry = {
-        "timestamp": datetime.now().isoformat(),
         "rfid_tag": rfid_tag,
-        "status": "access_granted" if user else "access_denied"
+        "Name": user.get("Name"),
+        "Matric": user.get("Matric"),
+        "Status": "Accepted" if user else "Denied",
+        "timestamp": user.get("timestamp")
     }
 
     logs_collection.insert_one(log_entry)
@@ -61,16 +63,17 @@ def access_check():
     if user:
         return jsonify({"message": "Access granted"}), 200
     return jsonify({"message": "Access denied"}), 403
-
+    
 #Search functionality API
 @app.route("/search", methods=["GET"])
 def search():
     date_resp = request.args.get("date")
+    
     if not date_resp:
         return jsonify({"error": "Date is required"}), 400
 
-    date = datetime.strptime(date_resp, "%Y-%m-%d")
-    logs = logs_collection.find({"date": date})
+    date_resp = datetime.strptime(date_resp, "%Y-%m-%d")
+    logs = logs_collection.find({"Date": {}})
     logs_list = list(logs)
     
     if logs_list:
