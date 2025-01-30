@@ -25,7 +25,7 @@ client = MongoClient(DATABASE_URL)
 db = client.get_database()
 
 # Flask-SocketIO Setup
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 def get_db():
     """Returns the database instance."""
@@ -106,4 +106,4 @@ def handle_disconnect():
     print("Client disconnected!")
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, host="0.0.0.0", port=5000)
+   socketio = SocketIO(app, cors_allowed_origins="*", transports=['websocket', 'polling'])
