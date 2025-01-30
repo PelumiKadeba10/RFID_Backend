@@ -66,7 +66,7 @@ def access_check():
     return jsonify({"message": "Access granted" if user else "Access denied"}), 200 if user else 403
 
 
-@app.route('/events', methods=['GET'])
+@app.route('/gt_logs', methods=['GET'])
 def get_events():
     db = get_db()
     logs_collection = db["Data"]
