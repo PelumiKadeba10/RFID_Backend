@@ -1,8 +1,4 @@
-from gevent import monkey
-monkey.patch_all(thread=False)
-
-from flask import Flask, request, jsonify, make_response
-from flask_socketio import SocketIO, emit
+from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from datetime import datetime
 from dotenv import load_dotenv
@@ -24,9 +20,6 @@ if not DATABASE_URL:
 client = MongoClient(DATABASE_URL)
 db = client.get_database()
 
-# Flask-SocketIO Setup
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
-
 def get_db():
     """Returns the database instance."""
     return db
@@ -34,7 +27,7 @@ def get_db():
 @app.route("/log", methods=["POST"])
 def access_check():
     """
-    Logs access attempts and emits real-time updates via SocketIO.
+    Logs access attempts.
     """
     db = get_db()
     users_collection = db["Users"]
@@ -46,22 +39,19 @@ def access_check():
 
     matric = data["matric"]
     timestamp = data.get("timestamp", datetime.utcnow().isoformat())
-    # Status = data.get("Status")
-    
+    Status = data.get("status")
+
     user = users_collection.find_one({"Matric": matric})
 
     log_entry = {
         "tag": user.get("tag") if user else None,
         "Name": user.get("Name") if user else "Unknown",
         "Matric": matric,
-        # "Status": Status,
+        "Status": Status,
         "timestamp": timestamp
     }
 
     logs_collection.insert_one(log_entry)
-
-    # Emit real-time updates
-    socketio.emit("access_log", log_entry)
 
     return jsonify({"message": "Access granted" if user else "Access denied"}), 200 if user else 403
 
@@ -74,27 +64,14 @@ def get_events():
 
     logs_list = [
         {
-            'tag': log.get('tag'),  # Use 'log' instead of 'logs'
+            'tag': log.get('tag'),
             'Name': log.get('Name'),
             'Matric': log.get('Matric'),
             'timestamp': log.get('timestamp')
         } for log in logs  # Iterate over each 'log' document
     ]
     
-    # Return the events as JSON
     return jsonify(logs_list)
 
-
-@socketio.on("connect")
-def handle_connect():
-    """Handles a new client connection."""
-    print("Client connected!")
-    emit("message", {"message": "Welcome to the RFID System!"})
-
-@socketio.on("disconnect")
-def handle_disconnect():
-    """Handles client disconnection."""
-    print("Client disconnected!")
-
 if __name__ == "__main__":
-   socketio = SocketIO(app, cors_allowed_origins="*", transports=['websocket', 'polling'])
+    app.run(debug=True)  # Run the app in debug mode
