@@ -2,7 +2,8 @@ import gevent
 from gevent import monkey
 monkey.patch_all()
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
+from flask import make_response
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
 from datetime import datetime
@@ -20,8 +21,10 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # SocketIO for real-time upd
 
 # MongoDB connection inside a function (fixes fork issue)
 def get_db():
-    client = MongoClient(app.config["MONGO_URI"])
-    return client.get_database()
+    if "db" not in g:
+        client = MongoClient(os.getenv("DATABASE_URL"))
+        g.db = client.get_database()
+    return g.db
 
 db = get_db()
 users_collection = db["Users"]
@@ -53,7 +56,7 @@ def access_check():
         "Name": user.get("Name") if user else "Unknown",
         "Matric": user.get("Matric") if user else "Unknown",
         "Status": "Accepted" if user else "Denied",
-        "timestamp": datetime.utcnow()  # Use current UTC time if missing
+        "timestamp": user.get("timestamp")  # Use current UTC time if missing
     }
 
     logs_collection.insert_one(log_entry)
@@ -63,13 +66,13 @@ def access_check():
 
     return jsonify({"message": "Access granted" if user else "Access denied"}), 200 if user else 403
 
-# Search functionality API
+
 @app.route("/search", methods=["GET"])
 def search():
     date_resp = request.args.get("date")
     
     if not date_resp:
-        return jsonify({"error": "Date is required"}), 400
+        return make_response(jsonify({"error": "Date is required"}), 400)
 
     date_resp = datetime.strptime(date_resp, "%Y-%m-%d")
     start = datetime.combine(date_resp, datetime.min.time())
@@ -78,7 +81,10 @@ def search():
     logs = logs_collection.find({"timestamp": {"$gte": start, "$lt": end}})
     logs_list = list(logs)
 
-    return jsonify(logs_list), 200 if logs_list else jsonify({"Error message": "No events found for this day"}), 404
+    if logs_list:
+        return make_response(jsonify(logs_list), 200)
+    
+    return make_response(jsonify({"Error message": "No events found for this day"}), 404)
 
 # Handle a new client connection.
 @socketio.on("connect")
