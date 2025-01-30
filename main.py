@@ -54,7 +54,7 @@ def access_check():
         "tag": user.get("tag") if user else None,
         "Name": user.get("Name") if user else "Unknown",
         "Matric": matric,
-        "Status": "",
+        "Status": Status,
         "timestamp": timestamp
     }
 
