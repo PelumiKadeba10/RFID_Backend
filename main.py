@@ -1,6 +1,7 @@
 import gevent
 from gevent import monkey
-monkey.patch_all()
+monkey.patch_all(thread=False)
+
 
 from flask import Flask, request, jsonify, g, make_response
 from flask_socketio import SocketIO, emit
