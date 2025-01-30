@@ -2,11 +2,10 @@ import gevent
 from gevent import monkey
 monkey.patch_all()
 
-from flask import Flask, request, jsonify, g
-from flask import make_response
+from flask import Flask, request, jsonify, g, make_response
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from flask_cors import CORS
 import os
@@ -19,31 +18,27 @@ CORS(app)
 app.config["MONGO_URI"] = os.getenv("DATABASE_URL")
 socketio = SocketIO(app, cors_allowed_origins="*")  # SocketIO for real-time updates
 
-# MongoDB connection inside a function (fixes fork issue)
-def get_db():
-    if "db" not in g:
-        with app.app_context():  # ✅ Ensures the app context is available
-            client = MongoClient(os.getenv("DATABASE_URL"))
-            g.db = client.get_database()
-    return g.db
+# Initialize MongoDB client
+client = MongoClient(os.getenv("DATABASE_URL"))
+db = client.get_database()  # Store the database reference globally
 
-# # Register a new user with an RFID tag.
+def get_db():
+    return db  # Return the global database reference
+
+# Register a new user with an RFID tag (Uncomment if needed)
 # @app.route("/Register", methods=["POST"])
 # def register_user():
-#     db = get_db()  
 #     users_collection = db["Users"]
-
 #     data = request.json
 #     if not data or "uid" not in data:
 #         return jsonify({"Error": "Missing required fields"}), 400
-
 #     users_collection.insert_one(data)
 #     return jsonify({"message": "User registered successfully!"}), 201
 
 # Verify RFID access and log the attempt.
 @app.route("/log", methods=["POST"])
 def access_check():
-    db = get_db()  # 
+    db = get_db()
     users_collection = db["Users"]
     logs_collection = db["Data"]
 
@@ -57,7 +52,7 @@ def access_check():
     user = users_collection.find_one({"Matric": Matric})
 
     log_entry = {
-        "tag": user.get("tag"),
+        "tag": user.get("tag") if user else None,
         "Name": user.get("Name") if user else "Unknown",
         "Matric": Matric,
         "Status": "Accepted" if user else "Denied",
@@ -74,7 +69,7 @@ def access_check():
 # Search functionality API
 @app.route("/search", methods=["GET"])
 def search():
-    db = get_db()  # ✅ Call inside the route
+    db = get_db()
     logs_collection = db["Data"]
 
     date_resp = request.args.get("date")
@@ -82,17 +77,21 @@ def search():
     if not date_resp:
         return make_response(jsonify({"error": "Date is required"}), 400)
 
-    date_resp = datetime.strptime(date_resp, "%Y-%m-%d")
-    start = datetime.combine(date_resp, datetime.min.time())
-    end = datetime.combine(date_resp, datetime.max.time())
+    try:
+        date_resp = datetime.strptime(date_resp, "%Y-%m-%d")
+        start = datetime.combine(date_resp, datetime.min.time())
+        end = datetime.combine(date_resp, datetime.max.time())
 
-    logs = logs_collection.find({"timestamp": {"$gte": start, "$lt": end}})
-    logs_list = list(logs)
+        logs = logs_collection.find({"timestamp": {"$gte": start, "$lt": end}})
+        logs_list = list(logs)
 
-    if logs_list:
-        return make_response(jsonify(logs_list), 200)
+        if logs_list:
+            return make_response(jsonify(logs_list), 200)
+        
+        return make_response(jsonify({"Error message": "No logs found for this day"}), 404)
     
-    return make_response(jsonify({"Error message": "No logs found for this day"}), 404)
+    except Exception as e:
+        return make_response(jsonify({"error": str(e)}), 500)
 
 # Handle a new client connection.
 @socketio.on("connect")
@@ -106,5 +105,4 @@ def handle_disconnect():
     print("Client disconnected!")
 
 if __name__ == "__main__":
-    with app.app_context():  #  Ensures Flask context before running
-        socketio.run(app, debug=True, host="0.0.0.0", port=5000)
+    socketio.run(app, debug=True, host="0.0.0.0", port=5000)
