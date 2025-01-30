@@ -46,7 +46,7 @@ def access_check():
 
     matric = data["matric"]
     timestamp = data.get("timestamp", datetime.utcnow().isoformat())
-    Status = data.get("Status")
+    # Status = data.get("Status")
     
     user = users_collection.find_one({"Matric": matric})
 
