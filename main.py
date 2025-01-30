@@ -27,40 +27,41 @@ def get_db():
             g.db = client.get_database()
     return g.db
 
-# Register a new user with an RFID tag.
-@app.route("/Register", methods=["POST"])
-def register_user():
-    db = get_db()  # ✅ Call inside the route
-    users_collection = db["Users"]
+# # Register a new user with an RFID tag.
+# @app.route("/Register", methods=["POST"])
+# def register_user():
+#     db = get_db()  
+#     users_collection = db["Users"]
 
-    data = request.json
-    if not data or "uid" not in data:
-        return jsonify({"Error": "Missing required fields"}), 400
+#     data = request.json
+#     if not data or "uid" not in data:
+#         return jsonify({"Error": "Missing required fields"}), 400
 
-    users_collection.insert_one(data)
-    return jsonify({"message": "User registered successfully!"}), 201
+#     users_collection.insert_one(data)
+#     return jsonify({"message": "User registered successfully!"}), 201
 
 # Verify RFID access and log the attempt.
 @app.route("/log", methods=["POST"])
 def access_check():
-    db = get_db()  # ✅ Call inside the route
+    db = get_db()  # 
     users_collection = db["Users"]
     logs_collection = db["Data"]
 
     data = request.json
-    rfid_tag = data.get("uid")
+    Matric = data.get("matric")
+    timestamp = data.get("timestamp")
 
-    if not rfid_tag:
-        return jsonify({"error": "Missing RFID tag"}), 400
+    if not Matric:
+        return jsonify({"error": "Missing matric"}), 400
 
-    user = users_collection.find_one({"rfid_tag": rfid_tag})
+    user = users_collection.find_one({"Matric": Matric})
 
     log_entry = {
-        "rfid_tag": rfid_tag,
+        "tag": user.get("tag"),
         "Name": user.get("Name") if user else "Unknown",
-        "Matric": user.get("Matric") if user else "Unknown",
+        "Matric": Matric,
         "Status": "Accepted" if user else "Denied",
-        "timestamp": user.get("timestamp")  # Use current UTC time if missing
+        "timestamp": timestamp  
     }
 
     logs_collection.insert_one(log_entry)
@@ -91,7 +92,7 @@ def search():
     if logs_list:
         return make_response(jsonify(logs_list), 200)
     
-    return make_response(jsonify({"Error message": "No events found for this day"}), 404)
+    return make_response(jsonify({"Error message": "No logs found for this day"}), 404)
 
 # Handle a new client connection.
 @socketio.on("connect")
