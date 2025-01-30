@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all(thread=False)
+
 from flask import Flask, request, jsonify, make_response
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
@@ -43,14 +46,15 @@ def access_check():
 
     matric = data["matric"]
     timestamp = data.get("timestamp", datetime.utcnow().isoformat())
-
-    user = users_collection.find_one({"Matric": matric})
+    Status = data.get("Status")
     
+    user = users_collection.find_one({"Matric": matric})
+
     log_entry = {
         "tag": user.get("tag") if user else None,
         "Name": user.get("Name") if user else "Unknown",
         "Matric": matric,
-        "Status": "Granted" if user else "Denied",
+        "Status": "",
         "timestamp": timestamp
     }
 
