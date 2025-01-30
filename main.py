@@ -65,34 +65,25 @@ def access_check():
 
     return jsonify({"message": "Access granted" if user else "Access denied"}), 200 if user else 403
 
-@app.route("/search", methods=["GET"])
-def search():
-    """
-    Searches access logs based on the provided date.
-    """
+
+@app.route('/events', methods=['GET'])
+def get_events():
     db = get_db()
     logs_collection = db["Data"]
+    logs = logs_collection.find()  # Find all documents in the collection
 
-    date_str = request.args.get("date")
-    if not date_str:
-        return make_response(jsonify({"error": "Date is required"}), 400)
+    logs_list = [
+        {
+            'tag': log.get('tag'),  # Use 'log' instead of 'logs'
+            'Name': log.get('Name'),
+            'Matric': log.get('Matric'),
+            'timestamp': log.get('timestamp')
+        } for log in logs  # Iterate over each 'log' document
+    ]
+    
+    # Return the events as JSON
+    return jsonify(logs_list)
 
-    try:
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        start = datetime.combine(date_obj, datetime.min.time())
-        end = datetime.combine(date_obj, datetime.max.time())
-
-        logs = list(logs_collection.find({"timestamp": {"$gte": start.isoformat(), "$lt": end.isoformat()}}))
-
-        if logs:
-            for log in logs:
-                log["_id"] = str(log["_id"])  # Convert ObjectId to string for JSON serialization
-            return make_response(jsonify(logs), 200)
-        
-        return make_response(jsonify({"message": "No logs found for this day"}), 404)
-
-    except Exception as e:
-        return make_response(jsonify({"error": str(e)}), 500)
 
 @socketio.on("connect")
 def handle_connect():
