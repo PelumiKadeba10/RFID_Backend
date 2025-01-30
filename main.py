@@ -22,17 +22,17 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # SocketIO for real-time upd
 # MongoDB connection inside a function (fixes fork issue)
 def get_db():
     if "db" not in g:
-        client = MongoClient(os.getenv("DATABASE_URL"))
-        g.db = client.get_database()
+        with app.app_context():  # ✅ Ensures the app context is available
+            client = MongoClient(os.getenv("DATABASE_URL"))
+            g.db = client.get_database()
     return g.db
-
-db = get_db()
-users_collection = db["Users"]
-logs_collection = db["Data"]
 
 # Register a new user with an RFID tag.
 @app.route("/Register", methods=["POST"])
 def register_user():
+    db = get_db()  # ✅ Call inside the route
+    users_collection = db["Users"]
+
     data = request.json
     if not data or "uid" not in data:
         return jsonify({"Error": "Missing required fields"}), 400
@@ -43,6 +43,10 @@ def register_user():
 # Verify RFID access and log the attempt.
 @app.route("/log", methods=["POST"])
 def access_check():
+    db = get_db()  # ✅ Call inside the route
+    users_collection = db["Users"]
+    logs_collection = db["Data"]
+
     data = request.json
     rfid_tag = data.get("uid")
 
@@ -66,9 +70,12 @@ def access_check():
 
     return jsonify({"message": "Access granted" if user else "Access denied"}), 200 if user else 403
 
-
+# Search functionality API
 @app.route("/search", methods=["GET"])
 def search():
+    db = get_db()  # ✅ Call inside the route
+    logs_collection = db["Data"]
+
     date_resp = request.args.get("date")
     
     if not date_resp:
@@ -98,5 +105,5 @@ def handle_disconnect():
     print("Client disconnected!")
 
 if __name__ == "__main__":
-    with app.app_context():
+    with app.app_context():  #  Ensures Flask context before running
         socketio.run(app, debug=True, host="0.0.0.0", port=5000)
